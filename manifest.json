@@ -1,0 +1,19 @@
+
+{
+  "name": "Carspotting",
+  "short_name": "Carspotting",
+  "description": "Mi colección personal de avistamientos de coches",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#17191d",
+  "theme_color": "#17191d",
+  "icons": [
+    {
+      "src": "/logopwa.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
