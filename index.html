@@ -37,10 +37,6 @@
 <main class="wrap">
 <p class="intro">Con mi app guardo la foto y los datos de cada coche que he spoteado y que tengo pendientes de subir a Instagram.</p>
 <div class="toolbar"><button class="primary" id="addBtn">＋ Añadir coche</button><button class="secondary" id="rankBtn" type="button">☷ Ranking de Posts</button><button class="secondary" id="calendarBtn" type="button">▦ Calendario</button></div>
-<div class="toolbar" id="categoryTabs">
-  <button class="primary" type="button" data-category="pendientes">Pendientes</button>
-  <button class="secondary" type="button" data-category="subidos">Subidos</button>
-</div>
 <input class="search" id="search" type="search" placeholder="Buscar por título o descripción…" autocomplete="off" aria-label="Buscar coches">
 <section class="grid" id="grid" aria-live="polite"></section>
 <details class="backup"><summary>Herramientas de respaldo</summary><p>Guarda una copia completa de tu colección, incluidas las fotos, o recupérala en este dispositivo u otro. Para usarlo normalmente no necesitas abrir esta sección.</p><div class="backup-actions"><button class="secondary" id="exportBtn" type="button">Exportar copia (.json)</button><button class="secondary" id="importBtn" type="button">Importar / combinar copia</button><button class="secondary" id="restoreBtn" type="button">Restaurar copia completa</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><small>Combinar añade los coches de la copia y actualiza los que tengan el mismo ID. Restaurar sustituye la colección actual por la copia seleccionada.</small></details>
@@ -80,7 +76,7 @@
    DB_VERSION debe incrementarse si se modifica la estructura de
    IndexedDB (por ejemplo, si se crea un almacén nuevo). */
 const DB_NAME='carspotting_pendientes_db', STORE='cars', RANK_STORE='leaderboard', DB_VERSION=2;
-let db, cars=[], leaderboard=[], schedule={}, calendarMonth=new Date(2026,9,1), selectedCalendarDate=null, editingId=null, pendingPhoto=null, editingPostId=null, toastTimer, categoriaActual='pendientes';
+let db, cars=[], leaderboard=[], schedule={}, calendarMonth=new Date(2026,9,1), selectedCalendarDate=null, editingId=null, pendingPhoto=null, editingPostId=null, toastTimer;
 const $=id=>document.getElementById(id);
 /* 2. BASE DE DATOS LOCAL (IndexedDB) --------------------------
    Funciones para abrir la base de datos y guardar/leer registros. */
@@ -107,71 +103,7 @@ function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2300)}
 /* 5. COLECCIÓN PRINCIPAL -------------------------------------
    render() dibuja las tarjetas; thumb() genera miniaturas reutilizables. */
-
-function render(){
-  const q=$('search').value.trim().toLowerCase();
-
-  const list=cars.filter(c=>{
-    const coincideBusqueda=(!q||
-      (c.title+' '+(c.description||'')+' '+(c.postText||''))
-        .toLowerCase().includes(q)
-    );
-
-    const coincideCategoria=categoriaActual==='subidos'
-      ?c.subido===true
-      :c.subido!==true;
-
-    return coincideBusqueda&&coincideCategoria;
-  });
-
-  const pendientes=cars.filter(c=>c.subido!==true).length;
-  $('total').textContent=pendientes;
-
-  const grid=$('grid');
-
-  if(!list.length){
-    const hayBusqueda=!!q;
-    const mensaje=categoriaActual==='subidos'
-      ?'Todavía no hay coches subidos'
-      :'No hay coches pendientes';
-
-    grid.innerHTML=`
-      <div class="empty">
-        <div class="emoji">${hayBusqueda?'🔎':'🏎️'}</div>
-        <strong>${hayBusqueda
-          ?'No se encontraron coches'
-          :mensaje}</strong>
-        <span>${hayBusqueda
-          ?'Prueba con otra búsqueda.'
-          :categoriaActual==='subidos'
-            ?'Cuando marques un coche como subido, aparecerá aquí.'
-            :'Añade tu primer avistamiento con el botón de arriba.'}</span>
-      </div>`;
-    return;
-  }
-
-  grid.innerHTML=list.map(c=>`
-    <article class="card">
-      <div data-view="${c.id}" style="cursor:${c.photo?'zoom-in':'default'}">
-        ${c.photo
-          ?`<img class="photo" src="${c.photo}" alt="Foto de ${esc(c.title)}" loading="lazy">`
-          :`<div class="placeholder" aria-label="Sin foto">🚘</div>`}
-      </div>
-      <div class="cardbody">
-        <div class="date">${new Date(c.createdAt).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</div>
-        <h2 class="cardtitle">${esc(c.title)}</h2>
-        ${c.description?`<p class="desc">${esc(c.description)}</p>`:''}
-        <div class="actions">
-          <button class="smallbtn" data-edit="${c.id}">Editar</button>
-          <button class="smallbtn" data-post="${c.id}">${c.postText?'Editar post':'Preparar Post'}</button>
-          <button class="smallbtn" data-toggle-subido="${c.id}">
-             ${c.subido===true?'Volver a pendientes':'Marcar como subido'}
-          </button>
-          <button class="smallbtn delete" data-delete="${c.id}">Eliminar</button>
-        </div>
-      </div>
-    </article>`).join('');
-}
+function render(){const q=$('search').value.trim().toLowerCase();const list=cars.filter(c=>(!q||(c.title+' '+(c.description||'')+' '+(c.postText||'')).toLowerCase().includes(q)));$('total').textContent=cars.length;const grid=$('grid');if(!list.length){grid.innerHTML=`<div class="empty"><div class="emoji">${q?'🔎':'🏎️'}</div><strong>${q?'No se encontraron coches':'Tu lista está vacía'}</strong><span>${q?'Prueba con otra búsqueda.':'Añade tu primer avistamiento con el botón de arriba.'}</span></div>`;return}grid.innerHTML=list.map(c=>`<article class="card"><div data-view="${c.id}" style="cursor:${c.photo?'zoom-in':'default'}">${c.photo?`<img class="photo" src="${c.photo}" alt="Foto de ${esc(c.title)}" loading="lazy">`:`<div class="placeholder" aria-label="Sin foto">🚘</div>`}</div><div class="cardbody"><div class="date">${new Date(c.createdAt).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</div><h2 class="cardtitle">${esc(c.title)}</h2>${c.description?`<p class="desc">${esc(c.description)}</p>`:''}<div class="actions"><button class="smallbtn" data-edit="${c.id}">Editar</button><button class="smallbtn" data-post="${c.id}">${c.postText?'Editar post':'Preparar Post'}</button><button class="smallbtn delete" data-delete="${c.id}">Eliminar</button></div></div></article>`).join('')}
 function thumb(c,cls='rank-thumb'){return c.photo?`<img class="${cls}" src="${c.photo}" alt="Foto de ${esc(c.title)}" loading="lazy">`:`<div class="rank-thumb-placeholder ${cls==='rank-thumb'?'':'rank-result-thumb'}" aria-label="Sin foto">🚘</div>`}
 /* 6. LEADERBOARD 'SIGUIENTE POST' -----------------------------
    El ranking guarda IDs, no copias de los coches, para distinguir
@@ -199,85 +131,8 @@ function closeForm(){$('modal').classList.remove('open');document.body.style.ove
 $('addBtn').addEventListener('click',()=>openForm());$('closeModal').addEventListener('click',closeForm);$('cancelBtn').addEventListener('click',closeForm);$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeForm()});$('search').addEventListener('input',render);
 $('photo').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(!f.type.startsWith('image/')){showToast('Elige un archivo de imagen.');return}if(f.size>18*1024*1024){showToast('La foto pesa demasiado (máx. 18 MB).');e.target.value='';return}try{pendingPhoto=await compressImage(f);$('preview').src=pendingPhoto;$('preview').style.display='block'}catch(err){showToast('No se pudo cargar esa foto.')}});
 function compressImage(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{try{const max=1500,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.82))}catch(e){reject(e)}finally{URL.revokeObjectURL(url)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('image'))};img.src=url})}
-$('carForm').addEventListener('submit',async e=>{e.preventDefault();const title=$('title').value.trim();if(!title){$('title').focus();return}const old=cars.find(c=>c.id===editingId);const car={
-  id:editingId||((crypto.randomUUID&&crypto.randomUUID())||String(Date.now())+Math.random()),
-  title,
-  photo:pendingPhoto,
-  description:$('description').value.trim(),
-  postText:old?.postText||'',
-  subido:old?.subido||false,
-  createdAt:old?.createdAt||Date.now(),
-  updatedAt:Date.now()
-};$('saveBtn').disabled=true;$('saveBtn').textContent='Guardando…';try{await saveCar(car);cars=await allCars();closeForm();render();showToast(old?'Cambios guardados':'Coche añadido')}catch(err){console.error(err);showToast('No se pudo guardar. Comprueba el espacio disponible.')}finally{$('saveBtn').disabled=false;$('saveBtn').textContent=editingId?'Guardar cambios':'Guardar coche'}});
-
-$('grid').addEventListener('click',async e=>{
-  const edit=e.target.closest('[data-edit]'),
-        post=e.target.closest('[data-post]'),
-        del=e.target.closest('[data-delete]'),
-        view=e.target.closest('[data-view]'),
-        toggle=e.target.closest('[data-toggle-subido]');
-
-  if(toggle){
-    const car=cars.find(c=>c.id===toggle.dataset.toggleSubido);
-    if(!car)return;
-
-    const estadoAnterior=car.subido===true;
-    car.subido=!estadoAnterior;
-
-    try{
-      await new Promise((resolve,reject)=>{
-        const tx=db.transaction(STORE,'readwrite');
-        tx.objectStore(STORE).put(car);
-        tx.oncomplete=resolve;
-        tx.onerror=()=>reject(tx.error);
-        tx.onabort=()=>reject(tx.error);
-      });
-
-      render();
-      showToast(car.subido?'Coche marcado como subido':'Coche devuelto a pendientes');
-    }catch(err){
-      car.subido=estadoAnterior;
-      render();
-      showToast('No se pudo actualizar el coche');
-    }
-
-    return;
-  }
-
-  if(edit){
-    const car=cars.find(c=>c.id===edit.dataset.edit);
-    if(car)openForm(car);
-  }else if(post){
-    const car=cars.find(c=>c.id===post.dataset.post);
-    if(car)openPost(car);
-  }else if(del){
-    const car=cars.find(c=>c.id===del.dataset.delete);
-    if(car&&confirm(`¿Eliminar “${car.title}” de tus pendientes?`)){
-      try{
-        await removeCar(car.id);
-        cars=await allCars();
-        leaderboard=leaderboard.filter(id=>id!==car.id);
-        for(const [day,carId] of Object.entries(schedule)){
-          if(carId===car.id)delete schedule[day];
-        }
-        await saveLeaderboard();
-        await saveSchedule();
-        render();
-        renderLeaderboard();
-        renderCalendar();
-        showToast('Coche eliminado');
-      }catch(err){
-        showToast('No se pudo eliminar');
-      }
-    }
-  }else if(view){
-    const car=cars.find(c=>c.id===view.dataset.view);
-    if(car?.photo){
-      $('viewerImg').src=car.photo;
-      $('viewer').classList.add('open');
-    }
-  }
-});
+$('carForm').addEventListener('submit',async e=>{e.preventDefault();const title=$('title').value.trim();if(!title){$('title').focus();return}const old=cars.find(c=>c.id===editingId);const car={id:editingId||((crypto.randomUUID&&crypto.randomUUID())||String(Date.now())+Math.random()),title,photo:pendingPhoto,description:$('description').value.trim(),postText:old?.postText||'',createdAt:old?.createdAt||Date.now(),updatedAt:Date.now()};$('saveBtn').disabled=true;$('saveBtn').textContent='Guardando…';try{await saveCar(car);cars=await allCars();closeForm();render();showToast(old?'Cambios guardados':'Coche añadido')}catch(err){console.error(err);showToast('No se pudo guardar. Comprueba el espacio disponible.')}finally{$('saveBtn').disabled=false;$('saveBtn').textContent=editingId?'Guardar cambios':'Guardar coche'}});
+$('grid').addEventListener('click',async e=>{const edit=e.target.closest('[data-edit]'),post=e.target.closest('[data-post]'),del=e.target.closest('[data-delete]'),view=e.target.closest('[data-view]');if(edit){const car=cars.find(c=>c.id===edit.dataset.edit);if(car)openForm(car)}else if(post){const car=cars.find(c=>c.id===post.dataset.post);if(car)openPost(car)}else if(del){const car=cars.find(c=>c.id===del.dataset.delete);if(car&&confirm(`¿Eliminar “${car.title}” de tus pendientes?`)){try{await removeCar(car.id);cars=await allCars();leaderboard=leaderboard.filter(id=>id!==car.id);for(const [day,carId] of Object.entries(schedule)){if(carId===car.id)delete schedule[day]}await saveLeaderboard();await saveSchedule();render();renderLeaderboard();renderCalendar();showToast('Coche eliminado')}catch(err){showToast('No se pudo eliminar')}}}else if(view){const car=cars.find(c=>c.id===view.dataset.view);if(car?.photo){$('viewerImg').src=car.photo;$('viewer').classList.add('open')}}});
 /* 9. PREPARACIÓN DEL TEXTO DE INSTAGRAM -----------------------
    El texto se guarda en postText dentro del registro del coche. */
 function openPost(car){editingPostId=car.id;$('postTitle').textContent='Preparar post · '+car.title;$('postText').value=car.postText||'';$('postModal').classList.add('open');document.body.style.overflow='hidden';setTimeout(()=>$('postText').focus(),100)}
