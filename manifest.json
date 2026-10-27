@@ -1,8 +1,8 @@
 
 {
   "id": "/",
-  "name": "Carspotting",
-  "short_name": "Carspotting",
+  "name": "PendientesDeSubir",
+  "short_name": "PendientesCarspotting",
   "description": "Mi colección personal de avistamientos de coches",
   "start_url": "/",
   "scope": "/",
