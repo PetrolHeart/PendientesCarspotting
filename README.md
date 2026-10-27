@@ -45,4 +45,4 @@ No introduzcas información sensible y protege el acceso a los dispositivos dond
 
 ---
 
-Proyecto personal de carspotting. 🏁
+Proyecto personal de carspotting para mí: @afrenchcarspotter 🏁
